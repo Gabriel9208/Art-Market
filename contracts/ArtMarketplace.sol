@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import "./ArtworkRegistry.sol";
+import "./interfaces/IArtworkRegistry.sol";
 
 /**
  * @title ArtMarketplace
@@ -11,6 +11,8 @@ import "./ArtworkRegistry.sol";
  * @notice A marketplace for buying and selling art
  */
 contract ArtMarketplace is Ownable(msg.sender), ReentrancyGuard {
+    IArtworkRegistry private _artworkRegistry;
+
     struct Listing {
         uint256 price;
         address seller;
@@ -21,22 +23,21 @@ contract ArtMarketplace is Ownable(msg.sender), ReentrancyGuard {
 
     event ArtWorkBought(address buyer, uint256 tokenId);
 
-    constructor() {}
-
-    function buyArtwork(uint256 tokenId) public {
-
+    constructor(address artworkRegistryAddress) {
+        _artworkRegistry = IArtworkRegistry(artworkRegistryAddress);
     }
 
+    function buyArtwork(uint256 tokenId) public {
+        
+    }
 
     function getListing(uint256 tokenId) public view returns (Listing memory) {
         return _listings[tokenId];
     }
 
-    function getListings(ArtworkRegistry artworkRegistry) public view returns (Listing[] memory) {
-        uint256[] memory tokenIds = artworkRegistry.getTokenIds();
-        uint256 tokenIdLength = artworkRegistry.getTokenIdLength();
-
-
+    function getListings() public view returns (Listing[] memory) {
+        uint256[] memory tokenIds = _artworkRegistry.getTokenIds();
+        uint256 tokenIdLength = _artworkRegistry.getTokenIdLength();
 
         Listing[] memory listings = new Listing[](tokenIdLength);
 

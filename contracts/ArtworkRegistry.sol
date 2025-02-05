@@ -3,13 +3,14 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
+import "./interfaces/IArtworkRegistry.sol";
 
 /**
  * @title ArtworkRegistry
  * @author Gabrieee
  * @notice A registry for artwork
  */
-contract ArtworkRegistry is ERC721URIStorage, Ownable(msg.sender) {
+contract ArtworkRegistry is ERC721URIStorage, Ownable(msg.sender), IArtworkRegistry {
     uint256[] private _tokenIds;
 
     struct Artwork {
@@ -63,36 +64,36 @@ contract ArtworkRegistry is ERC721URIStorage, Ownable(msg.sender) {
     }
 
     // Artwork functions
-    function getArtWorksByOwner(address owner) public view returns (uint256[] memory) {
+    function getArtworksByOwner(address owner) public view returns (uint256[] memory) {
         return _artworksByOwner[owner];
     }
 
 
-    function getArtWork(uint256 tokenId) public view returns(Artwork memory) {
+    function getArtwork(uint256 tokenId) public view returns(Artwork memory) {
         return _artworks[tokenId];
     }
 
-    function getArtWorkURI(uint256 tokenId) public view returns(string memory) {
+    function getArtworkURI(uint256 tokenId) public view returns(string memory) {
         return _artworks[tokenId].tokenURI;
     }
 
-    function getArtWorkName(uint256 tokenId) public view returns(string memory) {
+    function getArtworkName(uint256 tokenId) public view returns(string memory) {
         return _artworks[tokenId].name;
     }
 
-    function getArtWorkDescription(uint256 tokenId) public view returns(string memory) {
+    function getArtworkDescription(uint256 tokenId) public view returns(string memory) {
         return _artworks[tokenId].description;
     }
 
-    function getArtWorkArtist(uint256 tokenId) public view returns(string memory) {
+    function getArtworkArtist(uint256 tokenId) public view returns(string memory) {
         return _artworks[tokenId].artist;
     }
 
-    function getArtWorkYear(uint256 tokenId) public view returns(string memory) {
+    function getArtworkYear(uint256 tokenId) public view returns(string memory) {
         return _artworks[tokenId].year;
     }
 
-    function getArtWorkIsPhysical(uint256 tokenId) public view returns(string memory) {
+    function getArtworkIsPhysical(uint256 tokenId) public view returns(string memory) {
         return _artworks[tokenId].isPhysical;
     }
 }
