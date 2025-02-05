@@ -11,40 +11,79 @@ import "./interfaces/IArtworkRegistry.sol";
  * @notice A marketplace for buying and selling art
  */
 contract ArtMarketplace is Ownable(msg.sender), ReentrancyGuard {
-    IArtworkRegistry private _artworkRegistry;
-
-    struct Listing {
+    struct ListingItem {
+        uint256 tokenId;
         uint256 price;
-        address seller;
-        bool onSale;
+        address owner;
     }
 
-    mapping(uint256 tokenId => Listing) private _listings;
+    IArtworkRegistry private _artworkRegistry;
+    ListingItem[] private _listings;
+    mapping(uint256 tokenId => ListingItem) private _listingItemById;
 
     event ArtWorkBought(address buyer, uint256 tokenId);
+    event ListingsUpdatedBy(address updater);
+
+    modifier onlyOwnerOf(uint256 tokenId) {
+        address owner = _listingItemById[tokenId].owner;
+        require(msg.sender == owner, "Only owner can call this function");
+        _;
+    }
 
     constructor(address artworkRegistryAddress) {
         _artworkRegistry = IArtworkRegistry(artworkRegistryAddress);
     }
 
-    function buyArtwork(uint256 tokenId) public {
+    function _setPrice(uint256 _tokenId, uint256 _price) internal onlyOwnerOf(_tokenId){
+        require(_listingItemById[_tokenId].owner != address(0), "Item does not exist");
+        ListingItem memory listingItem = _listingItemById[_tokenId];
+        listingItem.price = _price;
+        _listingItemById[_tokenId] = listingItem;
+    }
+
+
+    function buyArtwork(uint256 tokenId) public payable {
         
     }
 
-    function getListing(uint256 tokenId) public view returns (Listing memory) {
-        return _listings[tokenId];
+
+
+    /**
+     * @notice Triggers the update of all listings
+     * @dev This function is only callable by the owner
+     */
+    function triggerUpdateListings() public onlyOwner {
+        require(_updateListings(), "Failed to update listings.");
     }
 
-    function getListings() public view returns (Listing[] memory) {
+
+    function getListing(uint256 tokenId) public view returns (ListingItem memory) {
+        return _listingItemById[tokenId];
+    }
+
+    function getListings() public view returns (ListingItem[] memory) {
         uint256[] memory tokenIds = _artworkRegistry.getTokenIds();
         uint256 tokenIdLength = _artworkRegistry.getTokenIdLength();
 
-        Listing[] memory listings = new Listing[](tokenIdLength);
+        ListingItem[] memory listings = new ListingItem[](tokenIdLength);
 
         for (uint256 i = 0; i < tokenIdLength; i++) {
-            listings[i] = _listings[tokenIds[i]];   
+            listings[i] = _listingItemById[tokenIds[i]];   
         }
 
         return listings;
-    }   
+    } 
+
+    /**
+     * @notice Updates the listings
+     * @dev This function is only callable by the owner
+     * @dev TODO: add logic to update listings
+     * @return bool True if the listings were updated successfully, false otherwise
+     */
+    function _updateListings() private returns (bool) {
+        emit ListingsUpdatedBy(msg.sender);
+
+
+        return true;
+    }  
 }
