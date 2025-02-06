@@ -19,6 +19,8 @@ contract ArtMarketplace is Ownable(msg.sender), ReentrancyGuard {
 
     IArtworkRegistry private _artworkRegistry;
     ListingItem[] private _listings;
+    uint256 private MARKET_FEE_BASIS_POINTS = 50; // 0.5%
+    uint256 private BIPS_DIVISOR = 10000;
     mapping(uint256 tokenId => ListingItem) private _listingItemById;
 
     event ArtWorkBought(address buyer, uint256 tokenId);
@@ -34,19 +36,32 @@ contract ArtMarketplace is Ownable(msg.sender), ReentrancyGuard {
         _artworkRegistry = IArtworkRegistry(artworkRegistryAddress);
     }
 
-    function _setPrice(uint256 _tokenId, uint256 _price) internal onlyOwnerOf(_tokenId){
-        require(_listingItemById[_tokenId].owner != address(0), "Item does not exist");
-        ListingItem memory listingItem = _listingItemById[_tokenId];
-        listingItem.price = _price;
-        _listingItemById[_tokenId] = listingItem;
+    /**
+     * @notice Buy an artwork
+     * @param tokenId The ID of the artwork
+     * @dev This function is only callable by the owner
+     */
+    function buyArtwork(uint256 tokenId) public payable nonReentrant{
+        // Security checks
+        require(_listingItemById[tokenId].owner != address(0), "Item does not exist");
+        require(msg.sender != _listingItemById[tokenId].owner, "Buyer already own this artwork");
+        require(msg.value == _listingItemById[tokenId].price, "Payment amount incorrect");
+
+        address seller = _listingItemById[tokenId].owner;
+
+        // Ownership transfer
+        _artworkRegistry.updateArtworkOwner(tokenId, msg.sender);
+
+        // Transfer of funds
+        uint256 marketFee = msg.value * MARKET_FEE_BASIS_POINTS / BIPS_DIVISOR;
+        uint256 sellerAmount = msg.value - marketFee;
+
+        payable(seller).transfer(sellerAmount);
+        payable(owner()).transfer(marketFee);
+
+        // Event
+        emit ArtWorkBought(msg.sender, tokenId);
     }
-
-
-    function buyArtwork(uint256 tokenId) public payable {
-        
-    }
-
-
 
     /**
      * @notice Triggers the update of all listings
@@ -73,6 +88,19 @@ contract ArtMarketplace is Ownable(msg.sender), ReentrancyGuard {
 
         return listings;
     } 
+
+    /**
+     * @notice Set the price of an artwork
+     * @param _tokenId The ID of the artwork
+     * @param _price The price of the artwork
+     * @dev This function is only callable by the owner
+     */
+    function _setPrice(uint256 _tokenId, uint256 _price) internal onlyOwnerOf(_tokenId){
+        require(_listingItemById[_tokenId].owner != address(0), "Item does not exist");
+        ListingItem memory listingItem = _listingItemById[_tokenId];
+        listingItem.price = _price;
+        _listingItemById[_tokenId] = listingItem;
+    }
 
     /**
      * @notice Updates the listings

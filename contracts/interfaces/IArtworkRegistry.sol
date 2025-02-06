@@ -19,6 +19,8 @@ interface IArtworkRegistry {
         bool onSale;
     }
 
+    function updateArtworkOwner(uint256 tokenId, address newOwner) external;
+
     function getTokenIds() external view returns (uint256[] memory);
     function getTokenIdLength() external view returns (uint256);
     function getArtworksByOwner(address owner) external view returns (uint256[] memory);
