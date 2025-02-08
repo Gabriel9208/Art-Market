@@ -19,12 +19,15 @@ contract ArtMarketplace is Ownable(msg.sender), ReentrancyGuard {
 
     IArtworkRegistry private _artworkRegistry;
     ListingItem[] private _listings;
-    uint256 private MARKET_FEE_BASIS_POINTS = 50; // 0.5%
-    uint256 private BIPS_DIVISOR = 10000;
     mapping(uint256 tokenId => ListingItem) private _listingItemById;
 
-    event ArtWorkBought(address buyer, uint256 tokenId);
-    event ListingsUpdatedBy(address updater);
+    uint256 private MARKET_FEE_BASIS_POINTS = 50; // 0.5%
+    uint256 private BIPS_DIVISOR = 10000;
+    uint256 private MIN_PRICE = 200 wei;
+
+    event ArtWorkBought(address indexed buyer, uint256 indexed tokenId);
+    event ArtworkListed(uint256 indexed tokenId, uint256 price, address indexed owner);
+    event ArtworkUnlisted(uint256 indexed tokenId, address indexed owner);
 
     modifier onlyOwnerOf(uint256 tokenId) {
         address owner = _listingItemById[tokenId].owner;
@@ -41,11 +44,12 @@ contract ArtMarketplace is Ownable(msg.sender), ReentrancyGuard {
      * @param tokenId The ID of the artwork
      * @dev This function is only callable by the owner
      */
-    function buyArtwork(uint256 tokenId) public payable nonReentrant{
+    function buyArtwork(uint256 tokenId) external payable nonReentrant{
         // Security checks
         require(_listingItemById[tokenId].owner != address(0), "Item does not exist");
         require(msg.sender != _listingItemById[tokenId].owner, "Buyer already own this artwork");
         require(msg.value == _listingItemById[tokenId].price, "Payment amount incorrect");
+        require(_listingItemById[tokenId].price >= MIN_PRICE, "Price is too low");
 
         address seller = _listingItemById[tokenId].owner;
 
@@ -63,20 +67,21 @@ contract ArtMarketplace is Ownable(msg.sender), ReentrancyGuard {
         emit ArtWorkBought(msg.sender, tokenId);
     }
 
+
     /**
-     * @notice Triggers the update of all listings
-     * @dev This function is only callable by the owner
+     * @notice Get a listing item by tokenId
+     * @param tokenId The ID of the artwork
+     * @return ListingItem 
      */
-    function triggerUpdateListings() public onlyOwner {
-        require(_updateListings(), "Failed to update listings.");
-    }
-
-
-    function getListing(uint256 tokenId) public view returns (ListingItem memory) {
+    function getListing(uint256 tokenId) external view returns (ListingItem memory) {
         return _listingItemById[tokenId];
     }
 
-    function getListings() public view returns (ListingItem[] memory) {
+    /**
+     * @notice Get all listings
+     * @return ListingItem[]
+     */
+    function getListings() external view returns (ListingItem[] memory) {
         uint256[] memory tokenIds = _artworkRegistry.getTokenIds();
         uint256 tokenIdLength = _artworkRegistry.getTokenIdLength();
 
@@ -91,27 +96,46 @@ contract ArtMarketplace is Ownable(msg.sender), ReentrancyGuard {
 
     /**
      * @notice Set the price of an artwork
-     * @param _tokenId The ID of the artwork
-     * @param _price The price of the artwork
+     * @param tokenId The ID of the artwork
+     * @param price The price of the artwork
      * @dev This function is only callable by the owner
      */
-    function _setPrice(uint256 _tokenId, uint256 _price) internal onlyOwnerOf(_tokenId){
-        require(_listingItemById[_tokenId].owner != address(0), "Item does not exist");
-        ListingItem memory listingItem = _listingItemById[_tokenId];
-        listingItem.price = _price;
-        _listingItemById[_tokenId] = listingItem;
+    function setPrice(uint256 tokenId, uint256 price) external onlyOwnerOf(tokenId){
+        require(_listingItemById[tokenId].owner != address(0), "Item does not exist");
+
+        ListingItem memory listingItem = _listingItemById[tokenId];
+        listingItem.price = price;
+        _listingItemById[tokenId] = listingItem;
     }
 
-    /**
-     * @notice Updates the listings
-     * @dev This function is only callable by the owner
-     * @dev TODO: add logic to update listings
-     * @return bool True if the listings were updated successfully, false otherwise
-     */
-    function _updateListings() private returns (bool) {
-        emit ListingsUpdatedBy(msg.sender);
+    function listArtwork(uint256 tokenId, uint256 price) external onlyOwnerOf(tokenId){
+        require(_listingItemById[tokenId].owner != address(0), "Item does not exist");
+        require(price >= MIN_PRICE, "Price is too low");
 
+        _listings.push(ListingItem(tokenId, price, msg.sender));
+        _listingItemById[tokenId] = ListingItem(tokenId, price, msg.sender);
 
-        return true;
-    }  
+        emit ArtworkListed(tokenId, price, msg.sender);
+    }
+
+    function unlistArtwork(uint256 tokenId) external onlyOwnerOf(tokenId){
+        require(_listingItemById[tokenId].owner != address(0), "Item does not exist");
+
+        bool removeFlag = false;
+
+        for (uint i = 0 ; i < _listings.length - 1 ; i++){
+            if(_listings[i].tokenId == tokenId || removeFlag){
+                if(!removeFlag){
+                    removeFlag = true;
+                }
+                _listings[i] = _listings[i + 1];
+            }
+
+        }
+
+        _listings.pop();
+        delete _listingItemById[tokenId];
+
+        emit ArtworkUnlisted(tokenId, msg.sender);
+    }
 }

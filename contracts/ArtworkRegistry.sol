@@ -17,10 +17,12 @@ contract ArtworkRegistry is ERC721URIStorage, Ownable(msg.sender), IArtworkRegis
     mapping(uint256 tokenId => Artwork) private _artworks;
     mapping(address owner => uint256[] artworks) private _artworksByOwner;
     
-    event ArtworkMinted(uint256 tokenId, string tokenURI, address owner);
-    event ArtworkBurned(uint256 tokenId, address owner);
-    event ArtworkOwnerUpdated(uint256 tokenId, address oldOwner, address newOwner);
-    event MarketplaceUpdated(address oldMarketplace, address newMarketplace);
+    event ArtworkMinted(uint256 indexed tokenId, string tokenURI, address indexed minter);
+    event ArtworkBurned(uint256 indexed tokenId, address indexed burner);
+    event ArtworkOwnerUpdated(uint256 indexed tokenId, address indexed oldOwner, address indexed newOwner);
+    event MarketplaceUpdated(address indexed oldMarketplace, address indexed newMarketplace);
+
+
 
     modifier onlyOwnerOf(uint256 tokenId) {
         address owner = _artworks[tokenId].owner;
