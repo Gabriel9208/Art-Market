@@ -46,7 +46,6 @@ contract ArtworkRegistry is ERC721URIStorage, Ownable(msg.sender), IArtworkRegis
         return _getTokenIdLength();
     }
 
-
     // Artwork functions
     function getArtworksByOwner(address owner) external view returns (uint256[] memory) {
         return _getArtworksByOwner(owner);
@@ -95,6 +94,10 @@ contract ArtworkRegistry is ERC721URIStorage, Ownable(msg.sender), IArtworkRegis
         return _getArtworkOnSale(tokenId);
     }
 
+    function getMarketplace() external view returns(address) {
+        return _getMarketplace();
+    }
+
 
     /**
      * @notice Mint a new artwork
@@ -136,6 +139,18 @@ contract ArtworkRegistry is ERC721URIStorage, Ownable(msg.sender), IArtworkRegis
             onSale
         );
 
+        _artworks[tokenId] = Artwork(
+            tokenId,
+            to,
+            tokenURI,
+            name,
+            description,
+            imageURI,
+            artist,
+            year,
+            isPhysical,
+            onSale
+        );
         _artworksByOwner[to].push(tokenId);
         _tokenIds.push(tokenId);
         emit ArtworkMinted(tokenId, tokenURI, to);
@@ -143,8 +158,33 @@ contract ArtworkRegistry is ERC721URIStorage, Ownable(msg.sender), IArtworkRegis
     }
 
     function burn(uint256 tokenId) public onlyOwnerOf(tokenId) returns (uint256) {
+        address owner = _getArtworkOwner(tokenId);
+
+        for (uint256 i = 0; i < _tokenIds.length; i++) {
+            if (_tokenIds[i] == tokenId ) {
+                for(uint256 j = i; j < _tokenIds.length - 1; j++){
+                    _tokenIds[j] = _tokenIds[j + 1];
+                }
+                _tokenIds.pop();
+                break;
+            }
+        }
+
+        delete _artworks[tokenId];
+
+        for (uint256 i = 0; i < _artworksByOwner[owner].length; i++) {
+            if (_artworksByOwner[owner][i] == tokenId) {
+                for(uint256 j = i; j < _artworksByOwner[owner].length - 1; j++){
+                    _artworksByOwner[owner][j] = _artworksByOwner[owner][j + 1];
+                }
+                _artworksByOwner[owner].pop();
+                break;
+            }
+        }
+
         _burn(tokenId);
-        emit ArtworkBurned(tokenId, _getArtworkOwner(tokenId));
+
+        emit ArtworkBurned(tokenId, owner);
         return tokenId;
     }
 
@@ -237,5 +277,9 @@ contract ArtworkRegistry is ERC721URIStorage, Ownable(msg.sender), IArtworkRegis
 
     function _getArtworkOnSale(uint256 tokenId) internal view returns(bool) {
         return _artworks[tokenId].onSale;
+    }
+
+    function _getMarketplace() internal view returns(address) {
+        return _marketplace;
     }
 }

@@ -60,8 +60,11 @@ contract ArtMarketplace is Ownable(msg.sender), ReentrancyGuard {
         uint256 marketFee = msg.value * MARKET_FEE_BASIS_POINTS / BIPS_DIVISOR;
         uint256 sellerAmount = msg.value - marketFee;
 
-        payable(seller).transfer(sellerAmount);
-        payable(owner()).transfer(marketFee);
+        (bool success, ) = payable(seller).call{value: sellerAmount}("");
+        require(success, "Transfer payment to seller failed");
+
+        (success, ) = payable(owner()).call{value: marketFee}("");
+        require(success, "Transfer market fee failed");
 
         // Event
         emit ArtWorkBought(msg.sender, tokenId);
