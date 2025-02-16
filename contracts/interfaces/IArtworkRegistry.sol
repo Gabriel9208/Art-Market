@@ -33,5 +33,4 @@ interface IArtworkRegistry {
     function getArtworkYear(uint256 tokenId) external view returns(string memory);
     function getArtworkIsPhysical(uint256 tokenId) external view returns(string memory);
     function getArtworkOnSale(uint256 tokenId) external view returns(bool);
-
 }

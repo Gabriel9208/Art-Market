@@ -18,7 +18,7 @@ contract ArtMarketplace is Ownable(msg.sender), ReentrancyGuard {
     }
 
     IArtworkRegistry private _artworkRegistry;
-    ListingItem[] private _listings;
+    uint256[] private _listings;
     mapping(uint256 tokenId => ListingItem) private _listingItemById;
 
     uint256 private MARKET_FEE_BASIS_POINTS = 50; // 0.5%
@@ -30,8 +30,13 @@ contract ArtMarketplace is Ownable(msg.sender), ReentrancyGuard {
     event ArtworkUnlisted(uint256 indexed tokenId, address indexed owner);
 
     modifier onlyOwnerOf(uint256 tokenId) {
-        address owner = _listingItemById[tokenId].owner;
-        require(msg.sender == owner, "Only owner can call this function");
+        if(_listingItemById[tokenId].owner != address(0)){
+            address owner = _listingItemById[tokenId].owner;
+            require(msg.sender == owner, "Only owner can call this function");
+        }
+        else{
+            require(_artworkRegistry.getArtworkOwner(tokenId) == msg.sender, "Only owner can call this function");
+        }
         _;
     }
 
@@ -55,6 +60,13 @@ contract ArtMarketplace is Ownable(msg.sender), ReentrancyGuard {
 
         // Ownership transfer
         _artworkRegistry.updateArtworkOwner(tokenId, msg.sender);
+        for(uint256 i = 0 ; i < _listings.length ; i++){
+            if(_listings[i] == tokenId){
+                ListingItem memory listingItem = _listingItemById[_listings[i]];
+                _listingItemById[_listings[i]] = ListingItem(listingItem.tokenId, listingItem.price, msg.sender);
+                break;
+            }
+        }
 
         // Transfer of funds
         uint256 marketFee = msg.value * MARKET_FEE_BASIS_POINTS / BIPS_DIVISOR;
@@ -66,10 +78,16 @@ contract ArtMarketplace is Ownable(msg.sender), ReentrancyGuard {
         (success, ) = payable(owner()).call{value: marketFee}("");
         require(success, "Transfer market fee failed");
 
+        // unlist
+        _unlistArtwork(tokenId);
+
         // Event
         emit ArtWorkBought(msg.sender, tokenId);
     }
 
+    function getListingLength() external view returns (uint256) {
+        return _listings.length;
+    }
 
     /**
      * @notice Get a listing item by tokenId
@@ -77,6 +95,7 @@ contract ArtMarketplace is Ownable(msg.sender), ReentrancyGuard {
      * @return ListingItem 
      */
     function getListing(uint256 tokenId) external view returns (ListingItem memory) {
+        require(_listingItemById[tokenId].owner != address(0), "Item does not exist");
         return _listingItemById[tokenId];
     }
 
@@ -112,22 +131,26 @@ contract ArtMarketplace is Ownable(msg.sender), ReentrancyGuard {
     }
 
     function listArtwork(uint256 tokenId, uint256 price) external onlyOwnerOf(tokenId){
-        require(_listingItemById[tokenId].owner != address(0), "Item does not exist");
+        require(_listingItemById[tokenId].owner == address(0), "Item already listed");
         require(price >= MIN_PRICE, "Price is too low");
 
-        _listings.push(ListingItem(tokenId, price, msg.sender));
+        _listings.push(tokenId);
         _listingItemById[tokenId] = ListingItem(tokenId, price, msg.sender);
 
         emit ArtworkListed(tokenId, price, msg.sender);
     }
 
     function unlistArtwork(uint256 tokenId) external onlyOwnerOf(tokenId){
-        require(_listingItemById[tokenId].owner != address(0), "Item does not exist");
+        _unlistArtwork(tokenId);
+    }
+
+    function _unlistArtwork(uint256 _tokenId) internal onlyOwnerOf(_tokenId){
+        require(_listingItemById[_tokenId].owner != address(0), "Item does not exist");
 
         bool removeFlag = false;
 
         for (uint i = 0 ; i < _listings.length - 1 ; i++){
-            if(_listings[i].tokenId == tokenId || removeFlag){
+            if(_listings[i] == _tokenId || removeFlag){
                 if(!removeFlag){
                     removeFlag = true;
                 }
@@ -137,8 +160,8 @@ contract ArtMarketplace is Ownable(msg.sender), ReentrancyGuard {
         }
 
         _listings.pop();
-        delete _listingItemById[tokenId];
+        delete _listingItemById[_tokenId];
 
-        emit ArtworkUnlisted(tokenId, msg.sender);
+        emit ArtworkUnlisted(_tokenId, msg.sender);
     }
 }

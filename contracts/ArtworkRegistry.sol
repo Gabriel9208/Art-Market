@@ -124,6 +124,7 @@ contract ArtworkRegistry is ERC721URIStorage, Ownable(msg.sender), IArtworkRegis
         string memory isPhysical,
         bool onSale
     ) public returns (uint256) {
+        require(!_exists(tokenId), "ERC721: token already exists");
         _mint(to, tokenId);
         _setTokenURI(tokenId, tokenURI);
         _artworks[tokenId] = Artwork(
@@ -158,6 +159,7 @@ contract ArtworkRegistry is ERC721URIStorage, Ownable(msg.sender), IArtworkRegis
     }
 
     function burn(uint256 tokenId) public onlyOwnerOf(tokenId) returns (uint256) {
+        require(_exists(tokenId), "ERC721: token does not exist");
         address owner = _getArtworkOwner(tokenId);
 
         for (uint256 i = 0; i < _tokenIds.length; i++) {
@@ -195,6 +197,7 @@ contract ArtworkRegistry is ERC721URIStorage, Ownable(msg.sender), IArtworkRegis
      * @dev only the owner of the artwork can call this function
      */
     function updateArtworkOwner(uint256 tokenId, address newOwner) external onlyMarketplace {
+        require(_exists(tokenId), "ERC721: token does not exist");
         address oldOwner = _artworks[tokenId].owner;
 
         _artworks[tokenId].owner = newOwner;
@@ -281,5 +284,9 @@ contract ArtworkRegistry is ERC721URIStorage, Ownable(msg.sender), IArtworkRegis
 
     function _getMarketplace() internal view returns(address) {
         return _marketplace;
+    }
+
+    function _exists(uint256 tokenId) internal view returns (bool) {
+        return _tokenIds.length > 0 && _artworks[tokenId].owner != address(0);
     }
 }
