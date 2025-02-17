@@ -23,7 +23,7 @@ contract ArtMarketplace is Ownable(msg.sender), ReentrancyGuard {
 
     uint256 private MARKET_FEE_BASIS_POINTS = 50; // 0.5%
     uint256 private BIPS_DIVISOR = 10000;
-    uint256 private MIN_PRICE = 200 wei;
+    uint256 private MIN_PRICE = 0.01 ether;
 
     event ArtWorkBought(address indexed buyer, uint256 indexed tokenId);
     event ArtworkListed(uint256 indexed tokenId, uint256 price, address indexed owner);
@@ -85,6 +85,14 @@ contract ArtMarketplace is Ownable(msg.sender), ReentrancyGuard {
         emit ArtWorkBought(msg.sender, tokenId);
     }
 
+    function getListingOwner(uint256 tokenId) external view returns (address) {
+        return _listingItemById[tokenId].owner;
+    }
+
+    function getListingPrice(uint256 tokenId) external view returns (uint256) {
+        return _listingItemById[tokenId].price;
+    }
+
     function getListingLength() external view returns (uint256) {
         return _listings.length;
     }
@@ -124,6 +132,7 @@ contract ArtMarketplace is Ownable(msg.sender), ReentrancyGuard {
      */
     function setPrice(uint256 tokenId, uint256 price) external onlyOwnerOf(tokenId){
         require(_listingItemById[tokenId].owner != address(0), "Item does not exist");
+        require(price >= MIN_PRICE, "Price is too low");
 
         ListingItem memory listingItem = _listingItemById[tokenId];
         listingItem.price = price;
